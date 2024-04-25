@@ -41,7 +41,7 @@ public class VersionManager {
     private AtomicBoolean cbDone = new AtomicBoolean(false);
 
     public VersionManager(JSONObject options, CordovaInterface crd, CallbackContext cbc, WebView wv) {
-        JSONArray resources = options.optJSONArray("resources");
+        /*JSONArray resources = options.optJSONArray("resources");
         if(resources!=null) {
             for (int i = 0; i < resources.length(); i++) {
                 try {
@@ -50,7 +50,7 @@ public class VersionManager {
                     Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
                 }
             }
-        }
+        }*/
         version_ = options.optString("version");
         versionCheckUrl_ = options.optString("versionCheckUrl");
         baseUrl_ = options.optString("baseUrl");
@@ -68,9 +68,9 @@ public class VersionManager {
             throw new RuntimeException("Empty/Null version specified");
         }
 
-        if(resources_==null || resources_.isEmpty()) {
+        /*if(resources_==null || resources_.isEmpty()) {
             throw new RuntimeException("Empty/Null resources list specified");
-        }
+        }*/
 
         crd_.getThreadPool().execute(() -> {
             while(true) {
@@ -81,6 +81,18 @@ public class VersionManager {
                         conn = (HttpURLConnection) url.openConnection();
                         String result = ioToString(conn.getInputStream());
                         JSONObject obj = new JSONObject(result);
+
+                        JSONArray resources = obj.optJSONArray("resources");
+                        if(resources!=null) {
+                            for (int i = 0; i < resources.length(); i++) {
+                                try {
+                                    resources_.add(resources.getString(i));
+                                } catch (Exception e) {
+                                    Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
+                                }
+                            }
+                        }
+
                         if(!obj.getBoolean("status")) {
                             String oldVersion = version_;
                             String _version = obj.getString("version");
@@ -93,6 +105,7 @@ public class VersionManager {
                                 }
                                 version_ = _version;
                             }
+
                             if(!resources_.isEmpty()) {
                                 List<Future<?>> calls = new ArrayList<>();
                                 for(String res: resources_) {
