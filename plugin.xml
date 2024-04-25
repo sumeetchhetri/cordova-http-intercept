@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="com.sum.cordova.http.intercept" version="1.0"
+	xmlns=" http://apache.org/cordova/ns/plugins/1.0"
+	xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<name>Auto update App Plugin</name>
+	<description>Auto update App Plugin</description>
+	<author>Sumeet Chhetri</author>
+	<license>MIT</license>
+	<keywords>http,intercept</keywords>
+	<repo>https://github.com/sumeetchhetri/cordova-http-intercept.git</repo>
+	<issue>https://github.com/sumeetchhetri/cordova-http-intercept/issues</issue>
+
+	<engines>
+		<engine name="cordova" version=">=2.9" />
+	</engines>
+
+	<js-module name="HttpIntercept" src="www/HttpIntercept.js">
+		<clobbers target="cordova.plugins.HttpIntercept" />
+	</js-module>
+
+	<dependency id="cordova-plugin-file" />
+
+	<platform name="android">
+		<config-file parent="/*" target="res/xml/config.xml">
+			<feature name="HttpIntercept">
+				<param name="android-package" value="com.sum.http.HttpIntercept" />
+			</feature>
+		</config-file>
+
+		<config-file target="AndroidManifest.xml" parent="/*">
+			<uses-permission android:name="android.permission.INTERNET" />
+			<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+		</config-file>
+
+		<source-file src="src/android/HttpIntercept.java" target-dir="src/com/sum/http" />
+		<source-file src="src/android/CustomWebViewClient.java" target-dir="src/com/sum/http" />
+		<source-file src="src/android/VersionManager.java" target-dir="src/com/sum/http" />
+	</platform>
+
+	<platform
+		name="ios">
+
+		<config-file parent="/*" target="config.xml">
+			<feature name="HttpIntercept">
+				<param name="ios-package" value="HttpIntercept" />
+			</feature>
+		</config-file>
+
+		<source-file src="src/ios/HttpIntercept.m" />
+		<framework src="CFNetwork.framework" />
+		<framework src="Foundation.framework" />
+		<framework src="Security.framework" />
+
+	</platform>
+</plugin>

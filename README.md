@@ -1,0 +1,1 @@
+## Cordova Auto Update HTTP Intercpet plugin ##

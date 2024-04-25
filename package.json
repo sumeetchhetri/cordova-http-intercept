@@ -1,0 +1,33 @@
+
+{
+  "name": "cordova-http-intercept",
+  "description": "Auto update App Plugin",
+  "version": "1.0",
+  "homepage": "https://github.com/sumeetchhetri/cordova-http-intercept#readme",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sumeetchhetri/cordova-http-intercept.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sumeetchhetri/cordova-http-intercept/issues"
+  },
+  "cordova": {
+    "id": "com.sum.cordova.http.intercept",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "ecosystem:phonegap",
+    "cordova-ios",
+    "cordova-android"
+  ],
+  "author": "Sumeet Chhetri",
+  "license": "MIT",
+  "scripts": {
+  },
+  "devDependencies": {
+  }
+}
