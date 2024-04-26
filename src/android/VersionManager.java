@@ -149,11 +149,11 @@ public class VersionManager {
         String url = uri.getPath();
         if (url.startsWith("/")) url = url.substring(1);
 
-        if(url.startsWith("android_asset/www")) {
+        /*if(url.startsWith("android_asset/www")) {
             return am.open(url.substring("android_asset/".length()));
         } else if(url.startsWith("android_asset/")) {
             return am.open("www" + File.separator + url.substring("android_asset/".length()));
-        }
+        }*/
 
         if (!resources_.isEmpty()) {
             for (String p : resources_) {
