@@ -22,6 +22,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,23 +35,119 @@ public class VersionManager {
 
     private final String baseUrl_;
 
-    private final List<String> resources_ = new ArrayList<>();
+    private final List<String> resources_ = Collections.synchronizedList(new ArrayList<>());
 
     private final CordovaInterface crd_;
 
     private AtomicBoolean cbDone = new AtomicBoolean(false);
 
-    public VersionManager(JSONObject options, CordovaInterface crd, CallbackContext cbc, WebView wv) {
-        /*JSONArray resources = options.optJSONArray("resources");
-        if(resources!=null) {
-            for (int i = 0; i < resources.length(); i++) {
+    private void update(CallbackContext cbc, WebView wv) {
+        if(new File(getAppDir(), "version.txt").exists()) {
+            try {
+                version_ = ioToString(new FileInputStream(new File(getAppDir(), "version.txt")));
+                version_ = version_.substring(0, version_.length()-1);
+                Log.i(HttpIntercept.TAG, "Current version is " + version_);
+            } catch(Exception e){}
+        }
+
+        crd_.getThreadPool().execute(() -> {
+            try {
+                HttpURLConnection conn = null;
                 try {
-                    resources_.add(resources.getString(i));
+                    URL url = new URL(versionCheckUrl_.replace("<<version>>", version_));
+                    conn = (HttpURLConnection) url.openConnection();
+                    String result = ioToString(conn.getInputStream());
+                    JSONObject obj = new JSONObject(result);
+
+                    List<String> resources__ = new ArrayList<>();
+                    JSONArray resources = obj.optJSONArray("resources");
+                    if(resources!=null) {
+                        for (int i = 0; i < resources.length(); i++) {
+                            try {
+                                resources__.add(resources.getString(i));
+                            } catch (Exception e) {
+                                Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
+                            }
+                        }
+                    }
+
+                    if(resources_.isEmpty()) {
+                        resources_.addAll(resources__);
+                    } else if(!resources_.containsAll(resources__) && resources__.containsAll(resources_)) {
+                        resources_.clear();
+                        resources_.addAll(resources__);
+                    }
+
+                    if(!obj.getBoolean("status")) {
+                        String oldVersion = version_;
+                        String _version = obj.getString("version");
+                        File versDir = new File(getAppDir(), _version);
+
+                        if(!versDir.exists()) {
+                            versDir.mkdir();
+                        }
+
+                        if(!_version.equals(oldVersion)) {
+                            if(new File(getAppDir(), oldVersion).exists()) {
+                                new File(getAppDir(), oldVersion).delete();
+                            }
+                            version_ = _version;
+                            OutputStreamWriter ow = new OutputStreamWriter(new FileOutputStream(new File(getAppDir(), "version.txt")));
+                            ow.write(version_);
+                            ow.close();
+                        }
+
+
+                        if(!resources_.isEmpty() && !new File(versDir, "updated_.txt").exists()) {
+                            if(!cbDone.get()) {
+                                PluginResult pr = new PluginResult(PluginResult.Status.OK, "START");
+                                pr.setKeepCallback(true);
+                                wv.post(() -> cbc.sendPluginResult(pr));
+                            }
+
+                            List<Future<?>> calls = new ArrayList<>();
+                            for(String res: resources_) {
+                                calls.add(triggerUpdate(res));
+                            }
+                            for(Future<?> f: calls) {
+                                f.get();
+                            }
+
+                            new File(versDir, "updated_.txt").createNewFile();
+
+                            if(!cbDone.get()) {
+                                wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.OK, "DONE")));
+                                cbDone.set(true);
+                            }
+                        } else {
+                            if(!cbDone.get()) {
+                                wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.OK, "DONE")));
+                                cbDone.set(true);
+                            }
+                        }
+                    } else {
+                        if(!cbDone.get()) {
+                            wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.OK, "DONE")));
+                            cbDone.set(true);
+                        }
+                    }
                 } catch (Exception e) {
                     Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
+                    if(!cbDone.get()) {
+                        wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, e.getMessage())));
+                        cbDone.set(true);
+                    }
+                } finally {
+                    if(conn!=null) conn.disconnect();
                 }
+                Thread.sleep(60000);
+            } catch(InterruptedException e) {
+                Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
             }
-        }*/
+        });
+    }
+
+    public VersionManager(JSONObject options, CordovaInterface crd, CallbackContext cbc, WebView wv) {
         version_ = options.optString("version");
         versionCheckUrl_ = options.optString("versionCheckUrl");
         baseUrl_ = options.optString("baseUrl");
@@ -68,102 +165,24 @@ public class VersionManager {
             throw new RuntimeException("Empty/Null version specified");
         }
 
-        /*if(resources_==null || resources_.isEmpty()) {
-            throw new RuntimeException("Empty/Null resources list specified");
-        }*/
-
-        crd_.getThreadPool().execute(() -> {
-            while(true) {
-                try {
-                    HttpURLConnection conn = null;
-                    try {
-                        URL url = new URL(versionCheckUrl_.replace("<<version>>", version_));
-                        conn = (HttpURLConnection) url.openConnection();
-                        String result = ioToString(conn.getInputStream());
-                        JSONObject obj = new JSONObject(result);
-
-                        JSONArray resources = obj.optJSONArray("resources");
-                        if(resources!=null) {
-                            for (int i = 0; i < resources.length(); i++) {
-                                try {
-                                    resources_.add(resources.getString(i));
-                                } catch (Exception e) {
-                                    Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
-                                }
-                            }
-                        }
-
-                        if(!obj.getBoolean("status")) {
-                            String oldVersion = version_;
-                            String _version = obj.getString("version");
-                            if(!new File(getAppDir(), _version).exists()) {
-                                new File(getAppDir(), _version).mkdir();
-                            }
-                            if(!_version.equals(oldVersion)) {
-                                if(new File(getAppDir(), oldVersion).exists()) {
-                                    new File(getAppDir(), oldVersion).delete();
-                                }
-                                version_ = _version;
-                            }
-
-                            if(!resources_.isEmpty()) {
-                                List<Future<?>> calls = new ArrayList<>();
-                                for(String res: resources_) {
-                                    calls.add(triggerUpdate(res));
-                                }
-                                for(Future<?> f: calls) {
-                                    f.get();
-                                }
-                                if(!cbDone.get()) {
-                                    wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.OK)));
-                                    cbDone.set(true);
-                                }
-                            }
-                        } else {
-                            if(!cbDone.get()) {
-                                wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.OK)));
-                                cbDone.set(true);
-                            }
-                        }
-                    } catch (Exception e) {
-                        Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
-                        if(!cbDone.get()) {
-                            wv.post(() -> cbc.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, e.getMessage())));
-                            cbDone.set(true);
-                        }
-                    } finally {
-                        if(conn!=null) conn.disconnect();
-                    }
-                    Thread.sleep(60000);
-                } catch(InterruptedException e) {
-                    Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
-                }
-            }
-        });
+        update(cbc, wv);
     }
 
+    private static final String ASSET_PATH= "/android_asset/www/";
     protected InputStream intercept(Uri uri) throws IOException {
-        Context ctx = crd_.getActivity().getApplicationContext();
-        AssetManager am = ctx.getResources().getAssets();
-
         String url = uri.getPath();
-        if (url.startsWith("/")) url = url.substring(1);
-
-        /*if(url.startsWith("android_asset/www")) {
-            return am.open(url.substring("android_asset/".length()));
-        } else if(url.startsWith("android_asset/")) {
-            return am.open("www" + File.separator + url.substring("android_asset/".length()));
-        }*/
-
-        if (!resources_.isEmpty()) {
-            for (String p : resources_) {
-                if (p.equals(url)) {
-                    File pf = new File(getAppDir() + File.separator + version_ + File.separator + getVersionedUrl(url));
-                    if(pf.exists()) {
-                        return new FileInputStream(pf);
-                    } else {
-                        String url_ = "www" + File.separator + getVersionedUrl(url);
-                        return am.open(url_);
+        if(url.startsWith(ASSET_PATH)) {
+            Context ctx = crd_.getActivity().getApplicationContext();
+            AssetManager am = ctx.getResources().getAssets();
+            String url_ = url.startsWith(ASSET_PATH) ? url.substring(ASSET_PATH.length()) : url;
+            if (!resources_.isEmpty()) {
+                for (String p : resources_) {
+                    if (p.equals(url_) || getVersionedUrl(p).equals(url_)) {
+                        File pf = new File(getAppDir() + File.separator + version_ + File.separator + getVersionedUrl(p));
+                        if (pf.exists()) {
+                            LOG.i(HttpIntercept.TAG, String.format("Rendered %s from path %s", url_, pf.getAbsolutePath()));
+                            return new FileInputStream(pf);
+                        }
                     }
                 }
             }

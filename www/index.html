@@ -20,7 +20,10 @@
     }
     function onDeviceReady() {
         httpIntercept = ( cordova && cordova.plugins && cordova.plugins.HttpIntercept ) ? cordova.plugins.HttpIntercept : null;
-        httpIntercept.init(cordova.file.cacheDirectory, ["main.js"], function () {
+        httpIntercept.init(cordova.file.cacheDirectory, ["main.js"], function (status) {
+			if(status=="START") {
+		    } else if(status=="DONE") {
+			}
 		}, function (err) {
 		});
     }

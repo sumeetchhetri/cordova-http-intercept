@@ -40,6 +40,8 @@ public class HttpIntercept extends CordovaPlugin {
                     callbackContext.sendPluginResult(new PluginResult(Status.ERROR, e.getMessage()));
                     return false;
                 }
+            } else {
+                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, "DONE"));
             }
 
             //LOG.i(HttpIntercept.TAG, "Successfully initialized HttpIntercept");
