@@ -169,6 +169,7 @@ public class VersionManager {
     }
 
     private static final String ASSET_PATH= "/android_asset/www/";
+    private static final String ASSET_REL_PATH= "/android_asset/";
     protected InputStream intercept(Uri uri) throws IOException {
         String url = uri.getPath();
         if(url.startsWith(ASSET_PATH)) {
@@ -182,6 +183,9 @@ public class VersionManager {
                         if (pf.exists()) {
                             LOG.i(HttpIntercept.TAG, String.format("Rendered %s from path %s", url_, pf.getAbsolutePath()));
                             return new FileInputStream(pf);
+                        } else {
+                            url_ = url.startsWith(ASSET_REL_PATH) ? url.substring(ASSET_REL_PATH.length()) : url;
+                            return am.open(getVersionedUrl(url_));
                         }
                     }
                 }
