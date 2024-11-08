@@ -18,6 +18,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -232,15 +233,17 @@ public class VersionManager {
                 }
                 HttpURLConnection conn = (HttpURLConnection) urL.openConnection();
                 try {
-                    String result = ioToString(conn.getInputStream());
                     try {
                         if (!filePath.exists()) {
                             filePath.mkdirs();
                         }
-
-                        OutputStreamWriter ow = new OutputStreamWriter(new FileOutputStream(f));
-                        ow.write(result);
-                        ow.close();
+                        OutputStream oos = new FileOutputStream(f);
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = conn.getInputStream().read(buffer)) != -1) {
+                            oos.write(buffer, 0, len);
+                        }
+                        oos.close();
                         LOG.i(HttpIntercept.TAG, "Fetched and saved latest resource " + urL);
                     } catch (Exception e) {
                         Log.e(HttpIntercept.TAG, Log.getStackTraceString(e));
